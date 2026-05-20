@@ -1,0 +1,60 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+google_token.json
+client_secret_*.json
+*.pem
+*.key
+*.crt
+
+# Local app/runtime artifacts
+*.log
+*.pid
+*.sqlite
+*.sqlite3
+*.db
+data/*.tmp
+data/*.cache
+
+# Generated/local data that may contain internal customer metadata
+data/customer_manifest.json
+
+# Local notebooks and exports
+.ipynb_checkpoints/
+*.csv
+*.tsv
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build and packaging outputs
+build/
+dist/
+*.egg-info/
+
+# Model and embedding caches
+.cache/
+models/
+embeddings/
