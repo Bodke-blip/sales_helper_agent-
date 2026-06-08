@@ -1,9 +1,11 @@
 from pathlib import Path
+import os
 import time
 from typing import Any
 from uuid import uuid4
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -57,6 +59,21 @@ def build_workflow_timings(result: dict[str, Any], request_started_at: float) ->
 
 def create_app() -> FastAPI:
     app = FastAPI(title="Predikly Sales Helper")
+    frontend_origins = [
+        origin.strip()
+        for origin in os.getenv("FRONTEND_ORIGINS", "").split(",")
+        if origin.strip()
+    ]
+
+    if frontend_origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=frontend_origins,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+
     graph = build_sales_helper_graph()
     initialize_chat_store()
     app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
@@ -64,6 +81,18 @@ def create_app() -> FastAPI:
     @app.get("/")
     def index() -> FileResponse:
         return FileResponse(FRONTEND_DIR / "index.html")
+
+    @app.get("/app.js")
+    def frontend_app() -> FileResponse:
+        return FileResponse(FRONTEND_DIR / "app.js")
+
+    @app.get("/config.js")
+    def frontend_config() -> FileResponse:
+        return FileResponse(FRONTEND_DIR / "config.js")
+
+    @app.get("/styles.css")
+    def frontend_styles() -> FileResponse:
+        return FileResponse(FRONTEND_DIR / "styles.css")
 
     @app.post("/query")
     def query_agent(request: QueryRequest) -> dict[str, Any]:

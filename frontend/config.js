@@ -1,0 +1,1 @@
+window.PREDIKLY_API_BASE_URL = "";

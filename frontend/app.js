@@ -16,6 +16,11 @@ const agentTrace = document.getElementById("agentTrace");
 const sources = document.getElementById("sources");
 const evaluation = document.getElementById("evaluation");
 const models = document.getElementById("models");
+const API_BASE_URL = String(window.PREDIKLY_API_BASE_URL || "").replace(/\/$/, "");
+
+function apiUrl(path) {
+  return `${API_BASE_URL}${path}`;
+}
 
 function createSessionId() {
   return window.crypto && window.crypto.randomUUID
@@ -304,7 +309,7 @@ function renderChatList() {
 
 async function refreshChatList() {
   try {
-    const data = await fetchJson("/chats", {}, 8000);
+    const data = await fetchJson(apiUrl("/chats"), {}, 8000);
     chatSessions = Array.isArray(data.sessions) ? data.sessions : [];
     renderChatList();
   } catch {
@@ -323,7 +328,7 @@ async function loadChatSession(nextSessionId) {
   status.textContent = "Loading";
 
   try {
-    const data = await fetchJson(`/chat/${encodeURIComponent(sessionId)}`, {}, 8000);
+    const data = await fetchJson(apiUrl(`/chat/${encodeURIComponent(sessionId)}`), {}, 8000);
     visibleChatHistory = messagePairsFromBackend(data.messages || []);
   } catch {
     visibleChatHistory = [];
@@ -438,7 +443,7 @@ async function submitQuery() {
   }, 100);
 
   try {
-    const data = await fetchJson("/query", {
+    const data = await fetchJson(apiUrl("/query"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -501,7 +506,7 @@ async function initializeChatUi() {
     await refreshChatList();
 
     if (chatSessions.some((session) => session.id === sessionId)) {
-      const data = await fetchJson(`/chat/${encodeURIComponent(sessionId)}`, {}, 8000);
+      const data = await fetchJson(apiUrl(`/chat/${encodeURIComponent(sessionId)}`), {}, 8000);
       visibleChatHistory = messagePairsFromBackend(data.messages || []);
     } else {
       visibleChatHistory = [];
