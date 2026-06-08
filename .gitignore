@@ -41,6 +41,22 @@ data/*.tmp
 data/*.cache
 
 # Generated/local data that may contain internal customer metadata
+ingestion.py
+upload_to_qdrant.py
+scripts/build_langfuse_judge_dataset.py
+data/
+!data/.gitkeep
+*.xlsx
+*.xls
+*.pptx
+*.ppt
+*.pdf
+*.docx
+*.doc
+*.png
+*.jpg
+*.jpeg
+*.webp
 data/customer_manifest.json
 data/langfuse_judge_eval_*.xlsx
 data/langfuse_judge_eval_*_audit.json

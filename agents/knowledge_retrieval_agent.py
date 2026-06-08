@@ -20,7 +20,7 @@ from hybrid_retrieval import (
     HYBRID_COLLECTION_NAME,
     SPARSE_VECTOR_NAME,
 )
-from ingestion import (
+from backend.runtime_config import (
     EMBEDDING_MODEL,
     QDRANT_API_KEY,
     QDRANT_URL,

@@ -58,8 +58,6 @@ Google Drive + reference Excel/PPT files
 ```text
 .
 ├── app.py                         # FastAPI app, UI, and API endpoints
-├── ingestion.py                   # Google Drive and reference-file ingestion helpers
-├── upload_to_qdrant.py            # Document processing and Qdrant upload script
 ├── requirements.txt               # Python dependencies
 ├── agents/
 │   ├── graph.py                   # LangGraph workflow
@@ -72,8 +70,7 @@ Google Drive + reference Excel/PPT files
 │   ├── llm.py
 │   ├── state.py
 │   └── tracing.py
-└── data/
-    └── customer_manifest.json     # Generated local manifest, ignored by Git
+└── data/                          # Local generated data, ignored by Git
 ```
 
 ## Setup
@@ -125,6 +122,7 @@ LANGFUSE_SECRET_KEY=
 LANGFUSE_HOST=
 
 GOOGLE_CLIENT_SECRET_FILE=client_secret.json
+REFERENCE_EXCEL_NAME=reference_points.xlsx
 ```
 
 Optional retrieval settings:
@@ -188,7 +186,7 @@ Example request:
 curl -X POST http://127.0.0.1:8000/query \
   -H "Content-Type: application/json" \
   -d '{
-    "query": "How many cases of Bill Gosling has Predikly worked on before?",
+    "query": "List the relevant case studies for a healthcare client.",
     "use_gemini_llm": true,
     "use_local_llm": true,
     "verbose": true
@@ -217,37 +215,7 @@ curl -X DELETE http://127.0.0.1:8000/cache
 
 ## Ingestion and Qdrant Upload
 
-The project includes scripts for loading approved Google Drive/reference data and uploading processed documents into a hybrid Qdrant collection.
-
-Validate Google Drive to Excel/PPT mapping:
-
-```bash
-python3 ingestion.py
-```
-
-Upload processed documents to Qdrant:
-
-```bash
-python3 upload_to_qdrant.py
-```
-
-By default, this creates/updates `predikly_hybrid_search_data_v2` with named vectors `dense` and `sparse`, and writes the BM25 sparse encoder state to `data/bm25_sparse_encoder.json`.
-Qdrant upserts are batched with `QDRANT_UPSERT_BATCH_SIZE` to avoid large request limits.
-
-The previous main collection, `predikly_hybrid_serch_data`, is configured as the fallback collection while the new Qwen-vision upload is validated.
-
-To rebuild a specific collection with the same upload script, set `HYBRID_QDRANT_COLLECTION_NAME` for that upload run:
-
-```bash
-HYBRID_QDRANT_COLLECTION_NAME=predikly_hybrid_search_data_v2 python3 upload_to_qdrant.py
-```
-
-Before uploading, confirm:
-
-- `QDRANT_URL` and `QDRANT_API_KEY` are set.
-- The hybrid target collection name is correct.
-- Google Drive OAuth credentials are available locally.
-- The reference workbook/PPT assets are accessible.
+Ingestion, upload, and evaluation dataset tooling is local-only and intentionally excluded from this public repository because it can reference internal customer material. The hosted app expects Qdrant collections and sparse encoder state to be prepared through the private/local ingestion flow.
 
 ## Local Ollama Fallback
 
