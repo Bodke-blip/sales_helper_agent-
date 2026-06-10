@@ -372,15 +372,10 @@ function updatePendingTurn(pendingMessage, finalAnswer, retrievalCollection = ""
 }
 
 function selectedLlmPreferences() {
-  const mode = llmMode.value;
   return {
-    label: {
-      gemini_ollama: "Gemini with Ollama fallback",
-      gemini_only: "Gemini only",
-      ollama_only: "Ollama only"
-    }[mode] || "Gemini with Ollama fallback",
-    useGemini: mode !== "ollama_only",
-    useLocal: mode !== "gemini_only"
+    label: "Gemini only",
+    useGemini: true,
+    useLocal: false
   };
 }
 

@@ -48,10 +48,8 @@ Google Drive + reference Excel/PPT files
 - LangChain
 - Qdrant
 - Google Gemini
-- Ollama fallback
-- HuggingFace sentence-transformers
-- Google Drive API
-- Optional Langfuse tracing
+- Hosted Hugging Face MiniLM embeddings
+- Optional Langfuse tracing if `langfuse` is installed
 
 ## Project Structure
 
@@ -103,26 +101,16 @@ HYBRID_QDRANT_COLLECTION_NAME=predikly_hybrid_search_data_v2
 HYBRID_QDRANT_FALLBACK_COLLECTION_NAME=predikly_hybrid_serch_data
 
 GEMINI_API_KEY=your_gemini_api_key
-
-OLLAMA_BASE_URL=http://127.0.0.1:11434
-REQUEST_FALLBACK_AFTER_SECONDS=999
 PRIMARY_LLM_TIMEOUT_SECONDS=12
-OLLAMA_TIMEOUT_SECONDS=10
 
-VISION_MODEL=qwen2.5vl
-VISION_PROVIDER=ollama
-VISION_MAX_TOKENS=700
-VISION_TIMEOUT_SECONDS=120
-VISION_MAX_IMAGE_SIDE=1024
-VISION_IMAGE_JPEG_QUALITY=82
+HF_TOKEN=your_huggingface_token
+HF_EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+EMBEDDING_TIMEOUT_SECONDS=20
 
 ENABLE_LANGFUSE_TRACING=false
 LANGFUSE_PUBLIC_KEY=
 LANGFUSE_SECRET_KEY=
 LANGFUSE_HOST=
-
-GOOGLE_CLIENT_SECRET_FILE=client_secret.json
-REFERENCE_EXCEL_NAME=reference_points.xlsx
 ```
 
 Optional retrieval settings:
@@ -178,6 +166,40 @@ Health check:
 curl http://127.0.0.1:8000/health
 ```
 
+## Deploy on Render
+
+This repo includes a `render.yaml` blueprint and Dockerfile for a Render web
+service. Render builds the container from the repo and serves the FastAPI app on
+the `PORT` environment variable.
+
+Before deploying, make sure `data/bm25_sparse_encoder.json` is committed. The
+rest of `data/` stays ignored.
+
+In Render, create a new Blueprint or Web Service from the GitHub repo and set
+these secret environment variables:
+
+```env
+QDRANT_URL=your_qdrant_url
+QDRANT_API_KEY=your_qdrant_api_key
+GEMINI_API_KEY=your_gemini_api_key
+HF_HUB_TOKEN=your_huggingface_token
+```
+
+The blueprint sets the non-secret defaults, including:
+
+```env
+PRIMARY_LLM_TIMEOUT_SECONDS=45
+HF_EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+BM25_STATE_PATH=data/bm25_sparse_encoder.json
+ENABLE_LANGFUSE_TRACING=false
+```
+
+After deploy, test:
+
+```bash
+curl https://YOUR-RENDER-URL.onrender.com/health
+```
+
 ## Query API
 
 Example request:
@@ -188,7 +210,7 @@ curl -X POST http://127.0.0.1:8000/query \
   -d '{
     "query": "List the relevant case studies for a healthcare client.",
     "use_gemini_llm": true,
-    "use_local_llm": true,
+    "use_local_llm": false,
     "verbose": true
   }'
 ```
@@ -196,7 +218,7 @@ curl -X POST http://127.0.0.1:8000/query \
 Useful options:
 
 - `use_gemini_llm`: enables Gemini.
-- `use_local_llm`: enables local Ollama fallback.
+- `use_local_llm`: accepted for backward compatibility, but local LLM fallback is disabled in this lightweight runtime.
 - `verbose`: includes agent trace details.
 
 ## Cache Endpoints
@@ -217,30 +239,10 @@ curl -X DELETE http://127.0.0.1:8000/cache
 
 Ingestion, upload, and evaluation dataset tooling is local-only and intentionally excluded from this public repository because it can reference internal customer material. The hosted app expects Qdrant collections and sparse encoder state to be prepared through the private/local ingestion flow.
 
-## Local Ollama Fallback
-
-The fallback model is configured as:
-
-```text
-llama3.2:3b
-```
-
-Install and run Ollama, then pull the model:
-
-```bash
-ollama pull llama3.2:3b
-```
-
-The app checks Ollama at:
-
-```text
-http://127.0.0.1:11434
-```
-
 ## Notes
 
 - The default primary model is `gemini-2.5-flash`.
-- The default embedding model is `sentence-transformers/all-MiniLM-L6-v2`.
+- Query embeddings are generated through the hosted Hugging Face endpoint for `sentence-transformers/all-MiniLM-L6-v2`.
 - The default hybrid Qdrant collection is `predikly_hybrid_search_data_v2`.
 - The default fallback hybrid Qdrant collection is `predikly_hybrid_serch_data`.
 - Retrieval checks the main hybrid collection first and only tries the fallback collection when the main collection returns fewer than `MIN_RETRIEVAL_RESULTS`.

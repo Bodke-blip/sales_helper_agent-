@@ -8,11 +8,11 @@ from threading import Lock
 from typing import Any
 
 from langchain_core.documents import Document
-from langchain_huggingface import HuggingFaceEmbeddings
 from qdrant_client import QdrantClient
 from qdrant_client import models
 from qdrant_client.models import FieldCondition, Filter, MatchValue, PayloadSchemaType
 
+from agents.embedding_client import get_embeddings
 from hybrid_retrieval import (
     BM25SparseEncoder,
     DENSE_VECTOR_NAME,
@@ -21,7 +21,6 @@ from hybrid_retrieval import (
     SPARSE_VECTOR_NAME,
 )
 from backend.runtime_config import (
-    EMBEDDING_MODEL,
     QDRANT_API_KEY,
     QDRANT_URL,
 )
@@ -88,11 +87,6 @@ def get_qdrant_client() -> QdrantClient:
         api_key=QDRANT_API_KEY,
         timeout=QDRANT_TIMEOUT_SECONDS,
     )
-
-
-@lru_cache(maxsize=1)
-def get_embeddings() -> HuggingFaceEmbeddings:
-    return HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
 
 
 @lru_cache(maxsize=1)
@@ -959,7 +953,6 @@ def clear_retrieval_cache() -> dict[str, Any]:
 
 
 def warm_retrieval_models() -> None:
-    get_embeddings()
     get_sparse_encoder()
 
 

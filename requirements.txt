@@ -1,47 +1,18 @@
-# Core LangChain / LangGraph stack
-langchain
+# Runtime LangChain / LangGraph stack
 langchain-core
-langchain-community
-langchain-text-splitters
-langchain-huggingface
-langchain-qdrant
-langchain-openai
 langchain-google-genai
 langgraph
-langgraph-checkpoint
-langgraph-checkpoint-sqlite
-langgraph-sdk
 
-# Local embedding model: sentence-transformers/all-MiniLM-L6-v2
-sentence-transformers
-transformers
-torch
-huggingface-hub
+# Hosted embeddings use sentence-transformers/all-MiniLM-L6-v2 through Hugging Face.
 
 # Qdrant Cloud
 qdrant-client
 
-# Google Drive API / OAuth
-google-api-python-client
-google-auth
-google-auth-oauthlib
-google-auth-httplib2
-
-# Document extraction
-PyPDF2
-python-docx
-python-pptx
-openpyxl
-
 # Runtime configuration and utilities
 python-dotenv
 pydantic
-pydantic-settings
-tiktoken
-langfuse
 fastapi
 uvicorn
 psycopg[binary]
 
 requests
-pillow

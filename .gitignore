@@ -44,8 +44,9 @@ data/*.cache
 ingestion.py
 upload_to_qdrant.py
 scripts/build_langfuse_judge_dataset.py
-data/
+data/*
 !data/.gitkeep
+!data/bm25_sparse_encoder.json
 *.xlsx
 *.xls
 *.pptx

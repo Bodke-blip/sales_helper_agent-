@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: predikly-sales-helper
+    env: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: QDRANT_URL
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: HYBRID_QDRANT_COLLECTION_NAME
+        value: predikly_hybrid_search_data_v2
+      - key: HYBRID_QDRANT_FALLBACK_COLLECTION_NAME
+        value: predikly_hybrid_serch_data
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      - key: PRIMARY_LLM_TIMEOUT_SECONDS
+        value: "45"
+      - key: HF_HUB_TOKEN
+        sync: false
+      - key: HF_EMBEDDING_MODEL
+        value: sentence-transformers/all-MiniLM-L6-v2
+      - key: EMBEDDING_TIMEOUT_SECONDS
+        value: "20"
+      - key: BM25_STATE_PATH
+        value: data/bm25_sparse_encoder.json
+      - key: ENABLE_LANGFUSE_TRACING
+        value: "false"
