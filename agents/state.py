@@ -20,6 +20,7 @@ class SalesHelperState(TypedDict, total=False):
     workflow_timings: list[dict[str, Any]]
     user_query: str
     contextual_query: str
+    retrieval_top_k: int
     chat_history: list[dict[str, str]]
     use_gemini_llm: bool
     use_local_llm: bool

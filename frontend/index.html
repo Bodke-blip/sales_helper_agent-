@@ -7,7 +7,30 @@
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <div class="app-shell">
+  <section id="readinessGate" class="readiness-gate" aria-labelledby="readinessTitle">
+    <div class="readiness-card">
+      <div class="readiness-brand" aria-hidden="true">P</div>
+      <p class="readiness-eyebrow">Predikly Sales Helper</p>
+      <h1 id="readinessTitle">Preparing your intelligence workspace</h1>
+      <p id="readinessIntro" class="readiness-intro">
+        Verifying the services that keep answers grounded, available, and observable.
+      </p>
+
+      <div id="readinessChecks" class="readiness-checks" aria-live="polite"></div>
+
+      <div class="readiness-footer">
+        <div>
+          <strong id="readinessSummary">Starting technology checks...</strong>
+          <span id="readinessDetail">This usually takes a few seconds.</span>
+        </div>
+        <button id="readinessAction" class="readiness-action" type="button" disabled>
+          Checking systems
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <div id="appShell" class="app-shell is-gated" aria-hidden="true">
     <aside class="sidebar">
       <div class="brand">
         <div class="brand-mark">P</div>

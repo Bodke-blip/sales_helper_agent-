@@ -20,15 +20,7 @@ class LLMGatewayError(RuntimeError):
     pass
 
 
-def set_request_started_at(started_at: float | None):
-    return None
-
-
-def reset_request_started_at(token) -> None:
-    return None
-
-
-def set_llm_preferences(*, use_gemini: bool, use_local: bool):
+def set_llm_preferences(*, use_gemini: bool):
     return _use_gemini_llm.set(use_gemini)
 
 

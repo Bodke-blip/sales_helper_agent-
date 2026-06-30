@@ -16,10 +16,168 @@ const agentTrace = document.getElementById("agentTrace");
 const sources = document.getElementById("sources");
 const evaluation = document.getElementById("evaluation");
 const models = document.getElementById("models");
+const readinessGate = document.getElementById("readinessGate");
+const readinessChecks = document.getElementById("readinessChecks");
+const readinessSummary = document.getElementById("readinessSummary");
+const readinessDetail = document.getElementById("readinessDetail");
+const readinessAction = document.getElementById("readinessAction");
+const appShell = document.getElementById("appShell");
 const API_BASE_URL = String(window.PREDIKLY_API_BASE_URL || "").replace(/\/$/, "");
+
+const readinessDefinitions = [
+  ["backend", "Application server", true],
+  ["qdrant", "Qdrant connection", true],
+  ["qdrant_collections", "Knowledge collections", true],
+  ["gemini", "Gemini model", true],
+  ["embeddings", "Embedding service", true],
+  ["local_knowledge", "Local knowledge assets", true],
+  ["chat_storage", "Conversation storage", false],
+  ["langfuse", "Langfuse observability", false]
+];
+
+let chatUiInitialized = false;
+let workspaceEntered = false;
 
 function apiUrl(path) {
   return `${API_BASE_URL}${path}`;
+}
+
+function wait(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function renderReadinessPlaceholders() {
+  readinessChecks.textContent = "";
+
+  readinessDefinitions.forEach(([id, label, critical]) => {
+    const row = document.createElement("article");
+    row.className = "readiness-row is-waiting";
+    row.dataset.checkId = id;
+
+    const indicator = document.createElement("span");
+    indicator.className = "readiness-indicator";
+    indicator.setAttribute("aria-hidden", "true");
+    indicator.textContent = "·";
+
+    const copy = document.createElement("div");
+    copy.className = "readiness-copy";
+
+    const name = document.createElement("strong");
+    name.textContent = label;
+
+    const message = document.createElement("span");
+    message.textContent = critical ? "Required" : "Optional";
+
+    const state = document.createElement("span");
+    state.className = "readiness-state";
+    state.textContent = "Waiting";
+
+    copy.append(name, message);
+    row.append(indicator, copy, state);
+    readinessChecks.appendChild(row);
+  });
+}
+
+function setReadinessRow(check, statusOverride = "") {
+  const row = readinessChecks.querySelector(`[data-check-id="${check.id}"]`);
+
+  if (!row) {
+    return;
+  }
+
+  const statusName = statusOverride || check.status;
+  const indicator = row.querySelector(".readiness-indicator");
+  const message = row.querySelector(".readiness-copy span");
+  const state = row.querySelector(".readiness-state");
+  row.className = `readiness-row is-${statusName}`;
+
+  if (statusName === "checking") {
+    indicator.textContent = "";
+    state.textContent = "Checking";
+    message.textContent = "Connecting and validating...";
+    return;
+  }
+
+  const labels = {
+    passed: ["✓", "Passed"],
+    warning: ["!", "Warning"],
+    failed: ["×", "Failed"]
+  };
+  const [symbol, label] = labels[statusName] || ["·", "Waiting"];
+  indicator.textContent = symbol;
+  state.textContent = label;
+  message.textContent = check.message || "Check completed.";
+}
+
+async function revealReadinessResults(checks) {
+  for (const check of checks) {
+    setReadinessRow(check, "checking");
+    await wait(window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 240);
+    setReadinessRow(check);
+    await wait(window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 110);
+  }
+}
+
+async function enterWorkspace() {
+  if (workspaceEntered) {
+    return;
+  }
+
+  workspaceEntered = true;
+  readinessGate.classList.add("is-complete");
+  appShell.classList.remove("is-gated");
+  appShell.setAttribute("aria-hidden", "false");
+  await wait(360);
+  readinessGate.hidden = true;
+
+  if (!chatUiInitialized) {
+    chatUiInitialized = true;
+    await initializeChatUi();
+  }
+
+  query.focus();
+}
+
+async function runReadinessChecks() {
+  renderReadinessPlaceholders();
+  readinessSummary.textContent = "Checking your technology stack";
+  readinessDetail.textContent = "Critical services must pass before the workspace opens.";
+  readinessAction.disabled = true;
+  readinessAction.textContent = "Checking systems";
+
+  try {
+    const data = await fetchJson(apiUrl("/readiness"), { method: "POST" }, 60000);
+    await revealReadinessResults(data.checks || []);
+
+    if (data.can_continue) {
+      readinessSummary.textContent = "All critical systems are ready";
+      readinessDetail.textContent = data.warning_count
+        ? `${data.warning_count} optional service warning(s) will not block the app.`
+        : `Verified in ${(Number(data.duration_ms || 0) / 1000).toFixed(1)} seconds.`;
+      readinessAction.disabled = false;
+      readinessAction.textContent = "Enter workspace";
+      readinessAction.onclick = enterWorkspace;
+      return;
+    }
+
+    readinessSummary.textContent = "A required service needs attention";
+    readinessDetail.textContent = data.summary || "Review the failed check and retry.";
+    readinessAction.disabled = false;
+    readinessAction.textContent = "Retry checks";
+    readinessAction.onclick = runReadinessChecks;
+  } catch {
+    const backendCheck = {
+      id: "backend",
+      status: "failed",
+      message: "The application server could not complete readiness checks."
+    };
+    setReadinessRow(backendCheck);
+    readinessSummary.textContent = "The application server is unavailable";
+    readinessDetail.textContent = "Start or redeploy the backend, then retry.";
+    readinessAction.disabled = false;
+    readinessAction.textContent = "Retry checks";
+    readinessAction.onclick = runReadinessChecks;
+  }
 }
 
 function createSessionId() {
@@ -519,7 +677,7 @@ async function initializeChatUi() {
   resizeComposer();
 }
 
-initializeChatUi();
+runReadinessChecks();
 
 composer.addEventListener("submit", (event) => {
   event.preventDefault();

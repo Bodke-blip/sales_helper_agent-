@@ -92,7 +92,6 @@ def normalize_message(row: dict[str, Any]) -> dict[str, Any]:
 def list_chat_sessions(limit: int = 50) -> list[dict[str, Any]]:
     if postgres_enabled():
         initialize_chat_store()
-        from psycopg.types.json import Jsonb
 
         with get_postgres_connection() as conn:
             with conn.cursor() as cursor:
@@ -190,6 +189,7 @@ def append_chat_turn(
 
     if postgres_enabled():
         initialize_chat_store()
+        from psycopg.types.json import Jsonb
 
         with get_postgres_connection() as conn:
             with conn.cursor() as cursor:

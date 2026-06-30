@@ -31,6 +31,8 @@ from agents.tools import KNOWLEDGE_RETRIEVAL_TOOLS
 AGENT_NAME = "knowledge_retrieval"
 TOOLS = KNOWLEDGE_RETRIEVAL_TOOLS
 DEFAULT_TOP_K = int(os.getenv("QDRANT_TOP_K", "15"))
+LIST_TOP_K_DEFAULT = int(os.getenv("LIST_INTERNAL_KNOWLEDGE_DEFAULT_TOP_K", "6"))
+LIST_TOP_K_MAX = int(os.getenv("LIST_INTERNAL_KNOWLEDGE_MAX_TOP_K", "20"))
 HYBRID_PREFETCH_LIMIT = int(os.getenv("QDRANT_HYBRID_PREFETCH_LIMIT", "50"))
 DOCUMENT_EXPANSION_SOURCE_LIMIT = int(os.getenv("QDRANT_DOCUMENT_EXPANSION_SOURCE_LIMIT", "3"))
 DOCUMENT_EXPANSION_CHUNK_LIMIT = int(os.getenv("QDRANT_DOCUMENT_EXPANSION_CHUNK_LIMIT", "40"))
@@ -237,6 +239,56 @@ def retrieve_from_collection(
         results.append((document, float(point.score or 0.0)))
 
     return results
+
+
+def coerce_retrieval_top_k(value: Any, *, default: int = DEFAULT_TOP_K) -> int:
+    try:
+        top_k = int(value)
+    except (TypeError, ValueError):
+        top_k = default
+
+    return max(1, min(MAX_CONTEXT_ITEMS, top_k))
+
+
+def infer_list_retrieval_top_k(query: str) -> int:
+    normalized_query = re.sub(r"\s+", " ", str(query or "").lower()).strip()
+    top_k = LIST_TOP_K_DEFAULT
+
+    if not normalized_query:
+        return top_k
+
+    numeric_match = re.search(
+        r"\b(?:top|first|next|show|list|give me|display)\s+(\d+)\b",
+        normalized_query,
+    )
+    if not numeric_match:
+        numeric_match = re.search(
+            r"\b(\d+)\s+(?:items?|entries?|examples?|results?|records?|use\s*cases?|customers?|tools?|benefits?|workflows?|outcomes?)\b",
+            normalized_query,
+        )
+
+    if numeric_match:
+        return max(LIST_TOP_K_DEFAULT, min(LIST_TOP_K_MAX, int(numeric_match.group(1))))
+
+    if re.search(r"\b(all|every|complete|full|entire|everything)\b", normalized_query):
+        return LIST_TOP_K_MAX
+
+    list_signals = sum(
+        1
+        for pattern in (
+            r"\blist\b",
+            r"\bshow\b",
+            r"\bgive me\b",
+            r"\bdisplay\b",
+            r"\benumerate\b",
+        )
+        if re.search(pattern, normalized_query)
+    )
+    connector_signals = normalized_query.count(",") + normalized_query.count(" and ") + normalized_query.count(" or ")
+
+    top_k += min(8, list_signals * 2 + connector_signals)
+
+    return max(LIST_TOP_K_DEFAULT, min(LIST_TOP_K_MAX, top_k))
 
 
 def infer_catalog_filters_from_query(query: str) -> dict[str, str]:
@@ -877,13 +929,17 @@ def build_retrieval_cache_key(
     *,
     query: str,
     collections: list[str],
+    top_k: int,
 ) -> tuple[Any, ...]:
     return (
         normalize_query_for_retrieval_cache(query),
         tuple(collections),
+        top_k,
         HYBRID_COLLECTION_NAME,
         HYBRID_FALLBACK_COLLECTION_NAME,
         DEFAULT_TOP_K,
+        LIST_TOP_K_DEFAULT,
+        LIST_TOP_K_MAX,
         HYBRID_PREFETCH_LIMIT,
         DOCUMENT_EXPANSION_SOURCE_LIMIT,
         DOCUMENT_EXPANSION_CHUNK_LIMIT,
@@ -1183,10 +1239,15 @@ def expand_results_with_document_chunks(results: list[tuple], collection_name: s
     return sort_results_for_context(expanded_results)[:MAX_CONTEXT_ITEMS]
 
 
-def retrieve_context_from_single_collection(query: str, collection_name: str) -> dict[str, Any]:
+def retrieve_context_from_single_collection(
+    query: str,
+    collection_name: str,
+    *,
+    top_k: int = DEFAULT_TOP_K,
+) -> dict[str, Any]:
     if ENSURE_PAYLOAD_INDEXES_ON_QUERY or DOCUMENT_EXPANSION_SOURCE_LIMIT > 0:
         ensure_payload_indexes(collection_name)
-    results = retrieve_from_collection(query, collection_name=collection_name)
+    results = retrieve_from_collection(query, collection_name=collection_name, top_k=top_k)
     results = expand_results_with_document_chunks(results, collection_name)
     retrieved_context = []
     retrieved_sources = []
@@ -1203,7 +1264,22 @@ def retrieve_context_from_single_collection(query: str, collection_name: str) ->
 
 
 def knowledge_retrieval_agent(state: SalesHelperState) -> SalesHelperState:
-    query = state.get("contextual_query") or state.get("user_query", "")
+    tool_name = state.get("orchestrator_tool", "")
+    parsed_request = parse_jsonish_object(state.get("orchestrator_tool_input", ""))
+
+    if tool_name == "list_internal_knowledge":
+        query = (
+            str(parsed_request.get("query") or "").strip()
+            or state.get("contextual_query")
+            or state.get("user_query", "")
+        )
+        requested_top_k = coerce_retrieval_top_k(
+            parsed_request.get("top_k"),
+            default=infer_list_retrieval_top_k(query),
+        )
+    else:
+        query = state.get("contextual_query") or state.get("user_query", "")
+        requested_top_k = coerce_retrieval_top_k(state.get("retrieval_top_k"), default=DEFAULT_TOP_K)
 
     if state.get("orchestrator_tool") == "usecase_catalog":
         catalog_retrieval = retrieve_usecase_catalog(state)
@@ -1225,7 +1301,7 @@ def knowledge_retrieval_agent(state: SalesHelperState) -> SalesHelperState:
         }
 
     collections = get_retrieval_collections()
-    cache_key = build_retrieval_cache_key(query=query, collections=collections)
+    cache_key = build_retrieval_cache_key(query=query, collections=collections, top_k=requested_top_k)
     cached_retrieval = get_cached_retrieval(cache_key)
 
     if cached_retrieval:
@@ -1254,7 +1330,11 @@ def knowledge_retrieval_agent(state: SalesHelperState) -> SalesHelperState:
 
     for collection_name in collections:
         try:
-            collection_result = retrieve_context_from_single_collection(query, collection_name)
+            collection_result = retrieve_context_from_single_collection(
+                query,
+                collection_name,
+                top_k=requested_top_k,
+            )
             results = collection_result["results"]
             retrieved_context = collection_result["retrieved_context"]
             retrieved_sources = collection_result["retrieved_sources"]
@@ -1293,6 +1373,7 @@ def knowledge_retrieval_agent(state: SalesHelperState) -> SalesHelperState:
         "internal_context": internal_context,
         "qdrant_sources": qdrant_sources,
         "retrieval_collection": used_collection,
+        "retrieval_top_k": requested_top_k,
         "retrieval_error": retrieval_error,
         "retrieval_customer_filter": requested_customer_name,
         "retrieval_cache_status": "miss",

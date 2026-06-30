@@ -1,7 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 import re
-from typing import Any, Callable
+from typing import Any
 
 from langchain.agents import create_agent
 
@@ -87,8 +87,9 @@ Your scope:
 
 Tool policy:
 - For an explicit request for all/every use case ever uploaded about Predikly, return the fixed complete snapshot exactly as supplied by the deterministic ListOfAgent path.
-- Use list_or_count_internal_usecases for exact use-case lists and counts.
-- Use search_internal_knowledge when the requested list is not represented by the catalog tool, such as tools, benefits, workflows, or outcomes.
+- Use search_list_internal_knowledge for list requests that need a dynamic number of results or that ask for things beyond the exact catalog.
+- Use list_or_count_internal_usecases for exact use-case lists and counts when the filter is already precise.
+- When the user asks for more than a few results, pass the full request so the tool can size the result window dynamically.
 - Preserve exact names and counts returned by tools. Deduplicate only clearly identical records.
 - Do not turn a list request into an unsolicited deep explanation.
 

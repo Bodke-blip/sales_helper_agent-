@@ -1,4 +1,5 @@
 import unittest
+import json
 from contextlib import nullcontext
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
@@ -9,14 +10,13 @@ from agents.list_of_agent import (
     ListOfAgent,
     load_all_predikly_usecases,
 )
-from agents.main_orchestrator_agent import (
-    MAIN_ORCHESTRATOR_PROMPT,
-    MainOrchestratorAgent,
-)
+from agents.main_orchestrator_agent import MainOrchestratorAgent
+from agents.knowledge_retrieval_agent import knowledge_retrieval_agent
 from agents.sales_helper_agent import (
     AGENT_RECURSION_LIMIT,
     SALES_HELPER_SYSTEM_PROMPT,
     build_specialist_tools,
+    infer_list_internal_knowledge_top_k,
     invoke_specialist_agent,
     sales_helper_agent_node,
 )
@@ -139,7 +139,7 @@ class MultiAgentArchitectureTests(unittest.TestCase):
 
     def test_every_specialist_has_shared_retrieval_and_profile_tools(self):
         expected_profile_tool = {
-            "list_of_agent": "list_or_count_internal_usecases",
+            "list_of_agent": "search_list_internal_knowledge",
             "benefits_agent": "search_benefits_evidence",
             "usecase_agent": "search_usecase_details",
             "customer_domain_agent": "search_customer_domain_knowledge",
@@ -148,8 +148,64 @@ class MultiAgentArchitectureTests(unittest.TestCase):
         for key, spec in SPECIALIST_SPECS.items():
             tools = build_specialist_tools({}, spec, {})
             tool_names = {item.name for item in tools}
-            self.assertIn("search_internal_knowledge", tool_names)
             self.assertIn(expected_profile_tool[key], tool_names)
+            if key == "list_of_agent":
+                self.assertNotIn("search_internal_knowledge", tool_names)
+            else:
+                self.assertIn("search_internal_knowledge", tool_names)
+
+    def test_list_retrieval_top_k_scales_with_request_shape(self):
+        self.assertEqual(infer_list_internal_knowledge_top_k("list tools"), 8)
+        self.assertEqual(infer_list_internal_knowledge_top_k("list top 12 use cases"), 12)
+        self.assertEqual(infer_list_internal_knowledge_top_k("show every workflow"), 20)
+
+    @patch("agents.sales_helper_agent._specialist_retrieval_state")
+    def test_list_tool_passes_dynamic_top_k_into_catalog_request(self, specialist_state):
+        specialist_state.return_value = {
+            "internal_context": [{"text": "one"}],
+            "qdrant_sources": [{"customer_name": "A"}],
+            "retrieval_collection": "catalog",
+            "retrieval_cache_status": "catalog_scan",
+            "retrieval_error": "",
+            "eval_status": "",
+            "eval_notes": "",
+        }
+
+        tools = build_specialist_tools({}, SPECIALIST_SPECS["list_of_agent"], {})
+        tool = next(item for item in tools if item.name == "list_or_count_internal_usecases")
+
+        tool.invoke({"request": "list 20 use cases"})
+
+        payload = json.loads(specialist_state.call_args.kwargs["tool_input"])
+        self.assertEqual(payload["top_k"], 20)
+
+    @patch("agents.knowledge_retrieval_agent.get_cached_retrieval", return_value=None)
+    @patch("agents.knowledge_retrieval_agent.get_retrieval_collections", return_value=["hybrid"])
+    @patch("agents.knowledge_retrieval_agent.retrieve_context_from_single_collection")
+    def test_list_retrieval_tool_threads_dynamic_top_k_into_qdrant_query(
+        self,
+        retrieve_context,
+        _collections,
+        _cached,
+    ):
+        retrieve_context.return_value = {
+            "results": [],
+            "retrieved_context": [],
+            "retrieved_sources": [],
+            "requested_customer_name": "",
+        }
+
+        knowledge_retrieval_agent(
+            {
+                "user_query": "List top 12 tools",
+                "orchestrator_tool": "list_internal_knowledge",
+                "orchestrator_tool_input": "{\"query\": \"List top 12 tools\", \"top_k\": 12}",
+                "internal_context": [],
+                "qdrant_sources": [],
+            }
+        )
+
+        retrieve_context.assert_called_once_with("List top 12 tools", "hybrid", top_k=12)
 
     @patch("agents.specialist_base.load_managed_prompt")
     def test_every_specialist_class_explicitly_uses_create_agent(self, load_prompt):

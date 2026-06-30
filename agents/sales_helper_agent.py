@@ -44,13 +44,18 @@ SALES_HELPER_SYSTEM_PROMPT = MAIN_ORCHESTRATOR_PROMPT
 AGENT_RECURSION_LIMIT = int(os.getenv("AGENT_RECURSION_LIMIT", "10"))
 
 
-def compact_json(data: Any, *, max_text_length: int = 700) -> str:
+def compact_json(
+    data: Any,
+    *,
+    max_text_length: int = 700,
+    max_list_items: int = 6,
+) -> str:
     def compact_value(value: Any) -> Any:
         if isinstance(value, dict):
             return {key: compact_value(item) for key, item in value.items()}
 
         if isinstance(value, list):
-            return [compact_value(item) for item in value[:6]]
+            return [compact_value(item) for item in value[:max_list_items]]
 
         if isinstance(value, str):
             cleaned = re.sub(r"\s+", " ", value).strip()
@@ -102,15 +107,15 @@ def compact_chat_history_for_agent(history: list[dict[str, Any]], *, limit: int 
     return compact_history
 
 
-def build_tool_response(tool_state: SalesHelperState) -> dict[str, Any]:
+def build_tool_response(tool_state: SalesHelperState, *, max_items: int = 6) -> dict[str, Any]:
     return {
         "internal_context": [
             compact_context_item(item)
-            for item in tool_state.get("internal_context", [])[:6]
+            for item in tool_state.get("internal_context", [])[:max_items]
         ],
         "sources": [
             compact_source_item(source)
-            for source in tool_state.get("qdrant_sources", [])[:6]
+            for source in tool_state.get("qdrant_sources", [])[:max_items]
         ],
         "retrieval_collection": tool_state.get("retrieval_collection", ""),
         "retrieval_cache_status": tool_state.get("retrieval_cache_status", "not_used"),
@@ -250,6 +255,57 @@ def _specialist_retrieval_state(
     return tool_state
 
 
+LIST_INTERNAL_KNOWLEDGE_DEFAULT_TOP_K = 6
+LIST_INTERNAL_KNOWLEDGE_MAX_TOP_K = int(os.getenv("LIST_INTERNAL_KNOWLEDGE_MAX_TOP_K", "20"))
+
+
+def infer_list_internal_knowledge_top_k(query: str) -> int:
+    normalized_query = re.sub(r"\s+", " ", query.lower()).strip()
+    top_k = LIST_INTERNAL_KNOWLEDGE_DEFAULT_TOP_K
+
+    if not normalized_query:
+        return top_k
+
+    numeric_match = re.search(
+        r"\b(?:top|first|next|show|list|give me|display)\s+(\d+)\b",
+        normalized_query,
+    )
+    if not numeric_match:
+        numeric_match = re.search(
+            r"\b(\d+)\s+(?:items?|entries?|examples?|results?|records?|use\s*cases?|customers?|tools?|benefits?|workflows?|outcomes?)\b",
+            normalized_query,
+        )
+
+    if numeric_match:
+        return max(
+            LIST_INTERNAL_KNOWLEDGE_DEFAULT_TOP_K,
+            min(LIST_INTERNAL_KNOWLEDGE_MAX_TOP_K, int(numeric_match.group(1))),
+        )
+
+    if re.search(r"\b(all|every|complete|full|entire|everything)\b", normalized_query):
+        return LIST_INTERNAL_KNOWLEDGE_MAX_TOP_K
+
+    list_signals = sum(
+        1
+        for pattern in (
+            r"\blist\b",
+            r"\bshow\b",
+            r"\bgive me\b",
+            r"\bdisplay\b",
+            r"\benumerate\b",
+        )
+        if re.search(pattern, normalized_query)
+    )
+    connector_signals = normalized_query.count(",") + normalized_query.count(" and ") + normalized_query.count(" or ")
+
+    top_k += min(8, list_signals * 2 + connector_signals)
+
+    return max(
+        LIST_INTERNAL_KNOWLEDGE_DEFAULT_TOP_K,
+        min(LIST_INTERNAL_KNOWLEDGE_MAX_TOP_K, top_k),
+    )
+
+
 def build_specialist_tools(
     base_state: SalesHelperState,
     spec: SpecialistSpec,
@@ -271,11 +327,37 @@ def build_specialist_tools(
         return compact_json(build_tool_response(tool_state))
 
     @tool
+    def search_list_internal_knowledge(query: str) -> str:
+        """Search Predikly's internal knowledge for list-style requests with a dynamic result window.
+
+        Args:
+            query: Complete standalone list-style query for the delegated request.
+        """
+        top_k = infer_list_internal_knowledge_top_k(query)
+        tool_state = _specialist_retrieval_state(
+            base_state,
+            collector,
+            tool_name="list_internal_knowledge",
+            tool_input=json.dumps(
+                {
+                    "query": query,
+                    "top_k": top_k,
+                }
+            ),
+        )
+        return compact_json(
+            build_tool_response(tool_state, max_items=top_k),
+            max_list_items=top_k,
+        )
+
+    @tool
     def list_or_count_internal_usecases(
         action: str = "list",
         company: str = "",
         domain: str = "",
         country: str = "",
+        request: str = "",
+        top_k: int | None = None,
     ) -> str:
         """List or count Qdrant use cases with optional company, domain, and country filters.
 
@@ -284,12 +366,26 @@ def build_specialist_tools(
             company: Exact or partial customer/company filter.
             domain: Industry or business-domain filter.
             country: Country or market filter.
+            request: Full list/count request so the tool can size result windows dynamically.
+            top_k: Optional explicit result window for list requests.
         """
+        request_text = request.strip() or " ".join(
+            value for value in (action, company, domain, country) if value
+        )
+        resolved_top_k = (
+            max(
+                LIST_INTERNAL_KNOWLEDGE_DEFAULT_TOP_K,
+                min(LIST_INTERNAL_KNOWLEDGE_MAX_TOP_K, int(top_k)),
+            )
+            if top_k is not None
+            else infer_list_internal_knowledge_top_k(request_text)
+        )
         request = {
             "action": "count" if str(action).lower() == "count" else "list",
             "company": company,
             "domain": domain,
             "country": country,
+            "top_k": resolved_top_k,
         }
         tool_state = _specialist_retrieval_state(
             base_state,
@@ -297,7 +393,10 @@ def build_specialist_tools(
             tool_name="usecase_catalog",
             tool_input=json.dumps(request),
         )
-        return compact_json(build_tool_response(tool_state))
+        return compact_json(
+            build_tool_response(tool_state, max_items=resolved_top_k),
+            max_list_items=resolved_top_k,
+        )
 
     @tool
     def search_benefits_evidence(query: str) -> str:
@@ -347,7 +446,7 @@ def build_specialist_tools(
     tools = [search_internal_knowledge]
 
     if spec.tool_profile == "list":
-        tools.append(list_or_count_internal_usecases)
+        tools = [search_list_internal_knowledge, list_or_count_internal_usecases]
     elif spec.tool_profile == "benefits":
         tools.append(search_benefits_evidence)
     elif spec.tool_profile == "usecase":
@@ -633,7 +732,7 @@ def sales_helper_agent_node(state: SalesHelperState) -> SalesHelperState:
             """Delegate list, catalog, enumeration, example, and count requests to ListOfAgent.
 
             Args:
-                request: Complete standalone list/count instruction for the specialist.
+                request: Complete standalone list/count instruction for the specialist, including how many results to show when relevant.
             """
             return delegate_to_specialist("list_of_agent", request)
 

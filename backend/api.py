@@ -16,9 +16,7 @@ from agents.knowledge_retrieval_agent import (
 )
 from agents.llm import (
     reset_llm_preferences,
-    reset_request_started_at,
     set_llm_preferences,
-    set_request_started_at,
 )
 from backend.agent_trace import build_agent_trace
 from backend.chat_memory import (
@@ -31,6 +29,7 @@ from backend.chat_memory import (
     list_chat_sessions,
 )
 from backend.schemas import QueryRequest
+from backend.readiness import run_readiness_checks
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -120,10 +119,8 @@ def create_app() -> FastAPI:
         session_id = request.session_id or f"session_{uuid4()}"
         chat_history = get_chat_history(session_id)
         contextual_query = build_contextual_query(request.query, chat_history)
-        request_token = set_request_started_at(request_started_at)
         llm_token = set_llm_preferences(
             use_gemini=request.use_gemini_llm,
-            use_local=request.use_local_llm,
         )
         seed = seeded_internal_context(request.query)
 
@@ -140,7 +137,6 @@ def create_app() -> FastAPI:
                 }
             )
         finally:
-            reset_request_started_at(request_token)
             reset_llm_preferences(llm_token)
 
         final_response = result.get("final_response", {})
@@ -180,6 +176,10 @@ def create_app() -> FastAPI:
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
+
+    @app.post("/readiness")
+    def readiness() -> dict[str, Any]:
+        return run_readiness_checks()
 
     @app.get("/cache/status")
     def cache_status() -> dict[str, Any]:
