@@ -164,25 +164,6 @@ publish the local prompts as new Langfuse versions intentionally, run:
 python -m scripts.sync_langfuse_prompts
 ```
 
-Optional retrieval settings:
-
-```env
-QDRANT_TOP_K=15
-QDRANT_HYBRID_PREFETCH_LIMIT=50
-QDRANT_DOCUMENT_EXPANSION_SOURCE_LIMIT=3
-QDRANT_DOCUMENT_EXPANSION_CHUNK_LIMIT=40
-QDRANT_MAX_CONTEXT_ITEMS=30
-QDRANT_TIMEOUT_SECONDS=8
-ENSURE_PAYLOAD_INDEXES_ON_QUERY=false
-MIN_RETRIEVAL_RESULTS=1
-QDRANT_UPSERT_BATCH_SIZE=50
-BM25_STATE_PATH=data/bm25_sparse_encoder.json
-RETRIEVAL_CACHE_TTL_SECONDS=300
-RETRIEVAL_CACHE_MAX_ENTRIES=256
-MAX_CHAT_HISTORY_TURNS=6
-CHAT_HISTORY_LIMIT=40
-CHAT_DB_URL=postgresql://USER:PASSWORD@HOST:5432/predikly_sales_helper?sslmode=require
-```
 
 ## Secrets and Local Files
 
