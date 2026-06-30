@@ -1,20 +1,20 @@
 # Runtime LangChain / LangGraph stack
-langchain
-langchain-core
-langchain-google-genai
-langgraph
+langchain==1.2.18
+langchain-core==1.3.3
+langchain-google-genai==4.2.2
+langgraph==1.1.10
 
 # Hosted embeddings use sentence-transformers/all-MiniLM-L6-v2 through Hugging Face.
 
 # Qdrant Cloud
-qdrant-client
+qdrant-client==1.17.1
 
 # Runtime configuration and utilities
-python-dotenv
-pydantic
-langfuse
-fastapi
-uvicorn
-psycopg[binary]
+python-dotenv==1.2.2
+pydantic==2.13.4
+langfuse==4.6.1
+fastapi==0.136.1
+uvicorn==0.46.0
+psycopg[binary]==3.3.4
 
-requests
+requests==2.33.1

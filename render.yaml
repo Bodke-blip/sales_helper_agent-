@@ -1,8 +1,11 @@
 services:
   - type: web
     name: predikly-sales-helper
-    env: docker
+    runtime: docker
     plan: free
+    repo: https://github.com/Bodke-blip/sales_helper_agent-.git
+    branch: create-agent-gemini-tools
+    autoDeployTrigger: commit
     dockerfilePath: ./Dockerfile
     healthCheckPath: /health
     envVars:
@@ -10,6 +13,16 @@ services:
         sync: false
       - key: QDRANT_API_KEY
         sync: false
+      - key: QDRANT_CLOUD_MANAGEMENT_KEY
+        sync: false
+      - key: QDRANT_CLOUD_ACCOUNT_ID
+        sync: false
+      - key: QDRANT_CLOUD_CLUSTER_ID
+        sync: false
+      - key: QDRANT_RECOVERY_RETRIES
+        value: "8"
+      - key: QDRANT_RECOVERY_RETRY_DELAY_SECONDS
+        value: "4"
       - key: HYBRID_QDRANT_COLLECTION_NAME
         value: predikly_hybrid_search_data_v2
       - key: HYBRID_QDRANT_FALLBACK_COLLECTION_NAME
@@ -27,6 +40,10 @@ services:
       - key: HF_EMBEDDING_MODEL
         value: sentence-transformers/all-MiniLM-L6-v2
       - key: EMBEDDING_TIMEOUT_SECONDS
+        value: "20"
+      - key: LIST_INTERNAL_KNOWLEDGE_DEFAULT_TOP_K
+        value: "6"
+      - key: LIST_INTERNAL_KNOWLEDGE_MAX_TOP_K
         value: "20"
       - key: BM25_STATE_PATH
         value: data/bm25_sparse_encoder.json
