@@ -1,5 +1,6 @@
 import os
 import time
+from contextlib import contextmanager
 from functools import wraps
 from typing import Any, Callable
 from uuid import uuid4
@@ -131,6 +132,38 @@ def trace_event(
     span.end()
 
 
+@contextmanager
+def agent_observation(
+    state: SalesHelperState,
+    *,
+    name: str,
+    input_data: Any | None = None,
+    metadata: dict[str, Any] | None = None,
+    model: str | None = None,
+):
+    """Trace a real agent invocation as a duration-scoped Langfuse agent observation."""
+    if not langfuse_enabled():
+        yield None
+        return
+
+    with langfuse_client.start_as_current_observation(
+        trace_context={"trace_id": state.get("trace_id")},
+        name=name,
+        as_type="agent",
+        input=sanitize_for_trace(input_data),
+        metadata=sanitize_for_trace(metadata or {}),
+        model=model,
+    ) as observation:
+        try:
+            yield observation
+        except Exception as error:
+            observation.update(
+                level="ERROR",
+                status_message=f"{type(error).__name__}: {str(error)[:300]}",
+            )
+            raise
+
+
 def trace_score(
     state: SalesHelperState,
     *,
@@ -166,6 +199,8 @@ def build_final_response_trace_output(state: SalesHelperState) -> dict[str, Any]
         "trace_id": final_response.get("trace_id", state.get("trace_id")),
         "retrieval_collection": state.get("retrieval_collection", ""),
         "retrieval_cache_status": state.get("retrieval_cache_status", "not_used"),
+        "selected_agents": state.get("selected_agents", []),
+        "agent_runs": state.get("agent_runs", []),
     }
 
 
@@ -218,6 +253,12 @@ def traced_node(node_name: str, node_fn: Callable[[SalesHelperState], SalesHelpe
             "eval_status": output_state.get("eval_status"),
             "evaluations_count": len(output_state.get("evaluations", [])),
             "duration_ms": elapsed_ms,
+            "agent_runs": output_state.get("agent_runs", []),
+            "orchestrator_prompt": {
+                "name": output_state.get("orchestrator_prompt_name", ""),
+                "version": output_state.get("orchestrator_prompt_version"),
+                "source": output_state.get("orchestrator_prompt_source", ""),
+            },
         }
 
         if node_name == "output_guardrail":

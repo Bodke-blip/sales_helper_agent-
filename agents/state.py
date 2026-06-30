@@ -27,6 +27,8 @@ class SalesHelperState(TypedDict, total=False):
     input_guardrail_reason: str
     intent: str
     selected_agents: list[str]
+    agent_runs: list[dict[str, Any]]
+    hardcoded_all_usecases_answer: str
     orchestrator_tool: str
     orchestrator_tool_input: str
     orchestrator_reason: str
@@ -34,6 +36,9 @@ class SalesHelperState(TypedDict, total=False):
     orchestrator_error: str
     llm_provider_status: dict[str, Any]
     orchestrator_llm_model: str
+    orchestrator_prompt_name: str
+    orchestrator_prompt_version: int | None
+    orchestrator_prompt_source: str
     internal_context: list[dict[str, Any]]
     qdrant_sources: list[dict[str, Any]]
     retrieval_collection: str

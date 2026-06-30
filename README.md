@@ -21,13 +21,23 @@ User / Web UI / API
   -> FastAPI app
   -> LangGraph workflow
   -> Input guardrail
-  -> Main orchestrator
-  -> Knowledge retrieval agent
+  -> MainOrchestratorAgent (create_agent)
+      -> ListOfAgent (create_agent)
+      -> BenefitsAgent (create_agent)
+      -> UseCaseAgent (create_agent)
+      -> CustomerDomainAgent (create_agent)
+  -> Shared knowledge retrieval tool
   -> Evaluation agent
   -> Response composer or fallback handler
   -> Output guardrail
   -> Final response
 ```
+
+The orchestrator delegates factual requests to one or more specialists and
+combines their grounded results. Every specialist has access to the same Qdrant
+retrieval path; specialist-specific tools only constrain how that existing path
+is used. Langfuse records the orchestrator and each specialist as `agent`
+observations, while Qdrant activity is recorded as `retriever` observations.
 
 The ingestion flow is:
 
@@ -59,7 +69,15 @@ Google Drive + reference Excel/PPT files
 ├── requirements.txt               # Python dependencies
 ├── agents/
 │   ├── graph.py                   # LangGraph workflow
-│   ├── orchestrator_agent.py      # Intent routing and final response composition
+│   ├── main_orchestrator_agent.py # MainOrchestratorAgent definition
+│   ├── list_of_agent.py           # ListOfAgent definition
+│   ├── benefits_agent.py          # BenefitsAgent definition
+│   ├── usecase_agent.py           # UseCaseAgent definition
+│   ├── customer_domain_agent.py   # CustomerDomainAgent definition
+│   ├── specialist_base.py         # Shared specialist types and grounding rules
+│   ├── specialist_agents.py       # Specialist registry only
+│   ├── sales_helper_agent.py      # Runtime coordination and tool adapters
+│   ├── response_helpers.py        # Grounded fallback and response formatting helpers
 │   ├── knowledge_retrieval_agent.py
 │   ├── eval_agent.py
 │   ├── evaluation.py
@@ -108,9 +126,30 @@ HF_EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
 EMBEDDING_TIMEOUT_SECONDS=20
 
 ENABLE_LANGFUSE_TRACING=false
+ENABLE_LANGFUSE_PROMPTS=true
+LANGFUSE_PROMPT_LABEL=production
+AGENT_RECURSION_LIMIT=10
 LANGFUSE_PUBLIC_KEY=
 LANGFUSE_SECRET_KEY=
 LANGFUSE_HOST=
+```
+
+Agent prompts use these Langfuse prompt names:
+
+```text
+predikly/agents/main-orchestrator
+predikly/agents/list-of-agent
+predikly/agents/benefits-agent
+predikly/agents/usecase-agent
+predikly/agents/customer-domain-agent
+```
+
+The application fetches the selected Langfuse label and falls back to the local
+prompt when Langfuse is unavailable or the prompt has not been created. To
+publish the local prompts as new Langfuse versions intentionally, run:
+
+```bash
+python -m scripts.sync_langfuse_prompts
 ```
 
 Optional retrieval settings:

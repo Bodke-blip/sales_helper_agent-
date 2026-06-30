@@ -1,0 +1,62 @@
+# Fixed snapshot used only for explicit requests for every uploaded Predikly use case.
+# Format: use case name | customer or source
+AA-AI Agent -Case Opening Use Case | AA-AI Agent -Case Opening Use Case.pptx
+AA-AI Agentic Prior Auth Use Case | AA-AI Agentic Prior Auth Use Case.pptx
+An Automated Process for Generating Sales Orders, Utilizing A Chatbot for Assistance | AA IA Solution - Sales_Order_Generation v1.0.pptx
+The Chatbot Is Proposed As A Tool to Automate Tasks By Providing Responses to User Queries | AI Agent CandidateFinder Wizard_v1.0.pptx
+Automated solution was divided into two modules – Distribute request and Receive request | Automation of Cost Rica Vendor Statement Reconciliation - CMT.pptx
+Technician Scheduling and AMC Service Management Automation | B&L Control Service Inc.
+Payroll Process | Bill Gosling
+Batch Document Upload | Bill Gosling
+UK Document Upload Process | Bill Gosling
+UK Payment Process | Bill Gosling
+Trust Roll Process | Bill Gosling
+Candidate Profile Management | Bill Gosling - 22 Use cases.pptx
+Enrollment Process | Bill Gosling - 22 Use cases.pptx
+Suncoast DP Report Process | Bill Gosling - 22 Use cases.pptx
+Bank Statement Upload Process | Bill Gosling - 22 Use cases.pptx
+US Benefit Process | Bill Gosling - 22 Use cases.pptx
+Correspondence file upload Process | Bill Gosling - 22 Use cases.pptx
+Client Remittance Process | Bill Gosling - 22 Use cases.pptx
+Customer Refund Process- EIB File creation Process | Bill Gosling - 22 Use cases.pptx
+Customer Refund Process- Alltrac and Letter File creation | Bill Gosling - 22 Use cases.pptx
+IP Payment Process | Bill Gosling - 22 Use cases.pptx
+Currency Exchange Process | Bill Gosling - 22 Use cases.pptx
+CV Upload on Workday Process | Bill Gosling - 22 Use cases.pptx
+Invoice Processing | Bill Gosling - 22 Use cases.pptx
+AD user deactivation process | Bill Gosling - 22 Use cases.pptx
+Genius Deactivation Process | Bill Gosling - 22 Use cases.pptx
+Alltrac Account deactivation process | Bill Gosling - 22 Use cases.pptx
+201 File Upload process | Bill Gosling - 22 Use cases.pptx
+Photo Upload process | Bill Gosling - 22 Use cases.pptx
+Employee Termination Report Management | Bill Gosling - 22 Use cases.pptx
+HR Memo File Creation from Stat Tracker | Bill Gosling - 22 Use cases.pptx
+ITR and Merit Letter Distribution | Bill Gosling - 22 Use cases.pptx
+Canada Benefits Process | Bill Gosling - 22 Use cases.pptx
+Online Portal for Medical Report | Clini Vantage
+Bank Account Reconciliation | CMT
+Cash application | CMT
+Dunning process | CMT
+Inventory Reporting | CMT
+Invoice Reconciliation | CMT
+The Vendor Statement Application Was Enabled Quickly and Efficiently | CMT_Support UseCase.pptx
+EBB Gas Flow Measurement | DCP Midstream
+Working/Processing of AA Wizard | Gen AI - AA Website Wizard_v1.0.pptx
+Working/Processing of Candidate Finder Wizard | Gen AI - Agent CandidateFinder Wizard (AA)_v1.0.pptx
+Gen AI -Employee Wizard | Gen AI -Employee Wizard .pptx
+Gen AI - KBKG CostSeg ChatBot v1.0 (1) | Gen AI - KBKG CostSeg ChatBot v1.0 (1).pptx
+Workflow/Image Summary | Gen AI - KBKG_SummaryCreation_v1.0.pptx
+Gen AI - Legal AI Assisant_v1.0 | Gen AI - Legal AI Assisant_v1.0.pptx
+Gen AI_PolicyWizard_v1.0 | Gen AI_PolicyWizard_v1.0 .pptx
+We implemented an AI-powered language moderation system | Gen AI - Powered Language Moderator.pptx
+Predikly Website Web Application (OMS) Cloud Environment User | Gen AI - Predikly Website Chatbot v1.0.pptx
+Users Web Application (OMS) Cloud Environment Predikly Use case Documents | Gen AI - Presales Assisant_v1.0.pptx
+The Chatbot Is Proposed As A Tool to Automate Tasks By Providing Responses to User Queries | Gen AI - Website Wizard_v1.0.pptx
+Case Submission Bot | Infinx
+KBKG –03- KROST Client Creation in PCS Application | KBKG
+Sales Quote Automation | ONealSteel
+ACH Batch Processing | Pacific Market International
+Individual Tax Return Process | PBMares
+Scout Process Discovery Phase-3 (Business Ops.) | Pride Industries
+Cloud Based ATM Central Monitoring System | Smart I
+TRA (Tidal Reporting App) | Tidal

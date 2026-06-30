@@ -60,10 +60,36 @@ def build_agent_trace(result: dict[str, Any], *, verbose: bool = False) -> list[
                     "LLM Tool Selection",
                     result.get("orchestrator_tool", "unknown"),
                 ],
+                "prompt_name": result.get("orchestrator_prompt_name", ""),
+                "prompt_version": result.get("orchestrator_prompt_version"),
+                "prompt_source": result.get("orchestrator_prompt_source", ""),
             },
             verbose,
         ),
     ]
+
+    for agent_run in result.get("agent_runs", []):
+        trace_items.append(
+            with_verbose_details(
+                {
+                    "agent": agent_run.get("display_name", agent_run.get("agent", "Specialist Agent")),
+                    "status": agent_run.get("status", "unknown"),
+                    "summary": (
+                        f"Returned {agent_run.get('sources_count', 0)} grounded source record(s) "
+                        f"from '{agent_run.get('retrieval_collection', 'unknown')}'."
+                    ),
+                    "model": agent_run.get("model"),
+                },
+                {
+                    "prompt_name": agent_run.get("prompt_name", ""),
+                    "prompt_version": agent_run.get("prompt_version"),
+                    "prompt_source": agent_run.get("prompt_source", ""),
+                    "retrieval_collection": agent_run.get("retrieval_collection", ""),
+                    "sources_count": agent_run.get("sources_count", 0),
+                },
+                verbose,
+            )
+        )
 
     if "knowledge_retrieval" in selected_agents:
         evaluation = evaluations.get("knowledge_retrieval", {})
